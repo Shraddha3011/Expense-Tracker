@@ -1,6 +1,6 @@
 # Expense Tracker (Technical Assessment Submission)
 
-A minimal full-stack expense tracker built for real-world reliability: retries, refreshes, slow networks, and duplicate submissions.
+A Full-stack expense tracker built for real-world reliability: retries, refreshes, slow networks, and duplicate submissions.
 
 ## Submission Links
 
