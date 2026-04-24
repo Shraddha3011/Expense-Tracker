@@ -132,27 +132,29 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('list');
   const tempIdRef = useRef(null);
 
-useEffect(() => {
-  loadExpenses();
-}, [loadExpenses]);
-  useEffect(() => {
-    fetchCategories()
-      .then(d => d?.length && setCategories(d))
-      .catch(() => {});
-  }, []);
-
-  const loadExpenses = useCallback(async () => {
+ const loadExpenses = useCallback(async () => {
     setLoading(true);
     setError('');
     try {
       const data = await fetchExpenses({ category: filterCategory, sortDate });
       setExpenses(data);
     } catch {
-      setError('Could not load expenses. Check your connection.');
+      setError('Could not load expenses.');
     } finally {
       setLoading(false);
     }
   }, [filterCategory, sortDate]);
+
+  // ✅ use AFTER definition
+  useEffect(() => {
+    loadExpenses();
+  }, [loadExpenses]);
+
+  useEffect(() => {
+    fetchCategories()
+      .then(d => d?.length && setCategories(d))
+      .catch(() => {});
+  }, []);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
