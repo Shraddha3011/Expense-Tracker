@@ -5,8 +5,8 @@ A minimal full-stack expense tracker built for real-world reliability: retries, 
 ## Submission Links
 
 - Repository: [https://github.com/Shraddha3011/Expense-Tracker](https://github.com/Shraddha3011/Expense-Tracker)
-- Live App (Frontend): `https://expense-tracker-gpugfhh7t-empowerhers-projects.vercel.app/`
-- Live API (Backend): `https://expense-tracker-zle5.onrender.com/`
+- **Frontend**: https://expense-tracker-gpugfhh7t-empowerhers-projects.vercel.app/
+- **Backend API**: https://expense-tracker-zle5.onrender.com/
 
 ## What This Solves
 
