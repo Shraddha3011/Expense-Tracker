@@ -73,8 +73,44 @@ function isValidDate(dateString) {
   return date instanceof Date && !isNaN(date);
 }
 
+function runAsync(query, params = []) {
+  return new Promise((resolve, reject) => {
+    db.run(query, params, function onRun(err) {
+      if (err) {
+        reject(err);
+        return;
+      }
+      resolve(this);
+    });
+  });
+}
+
+function getAsync(query, params = []) {
+  return new Promise((resolve, reject) => {
+    db.get(query, params, (err, row) => {
+      if (err) {
+        reject(err);
+        return;
+      }
+      resolve(row);
+    });
+  });
+}
+
+function allAsync(query, params = []) {
+  return new Promise((resolve, reject) => {
+    db.all(query, params, (err, rows) => {
+      if (err) {
+        reject(err);
+        return;
+      }
+      resolve(rows);
+    });
+  });
+}
+
 // POST /expenses - Create a new expense with idempotency
-app.post('/expenses', (req, res) => {
+app.post('/expenses', async (req, res) => {
   const idempotencyKey = req.headers['idempotency-key'];
   
   // Validate idempotency key
@@ -88,60 +124,52 @@ app.post('/expenses', (req, res) => {
     return res.status(400).json({ errors: validationErrors });
   }
 
-  // Check if this idempotency key already exists
-  db.get(
-    'SELECT expense_id FROM idempotency_keys WHERE idempotency_key = ?',
-    [idempotencyKey],
-    (err, row) => {
-      if (err) {
-        return res.status(500).json({ error: 'Database error' });
-      }
+  const expenseId = uuidv4();
+  const amountInCents = Math.round(Number(req.body.amount) * 100);
+  const category = req.body.category.trim();
+  const description = req.body.description.trim();
+  const { date } = req.body;
 
-      // If key exists, return the cached response
-      if (row) {
-        db.get('SELECT * FROM expenses WHERE id = ?', [row.expense_id], (err, expense) => {
-          if (err) return res.status(500).json({ error: 'Database error' });
-          return res.status(201).json(formatExpense(expense));
-        });
-        return;
-      }
+  try {
+    await runAsync('BEGIN IMMEDIATE TRANSACTION');
 
-      // Create new expense
-      const expenseId = uuidv4();
-      const amountInCents = Math.round(parseFloat(req.body.amount) * 100); // Store as cents
-      const { category, description, date } = req.body;
+    const existingKey = await getAsync(
+      'SELECT expense_id FROM idempotency_keys WHERE idempotency_key = ?',
+      [idempotencyKey]
+    );
 
-      db.run(
-        `INSERT INTO expenses (id, amount, category, description, date) 
-         VALUES (?, ?, ?, ?, ?)`,
-        [expenseId, amountInCents, category, description, date],
-        function (err) {
-          if (err) {
-            return res.status(500).json({ error: 'Failed to create expense' });
-          }
-
-          // Store idempotency key
-          db.run(
-            'INSERT INTO idempotency_keys (idempotency_key, expense_id) VALUES (?, ?)',
-            [idempotencyKey, expenseId],
-            (err) => {
-              if (err) console.error('Idempotency key storage error:', err);
-            }
-          );
-
-          // Return the created expense
-          db.get('SELECT * FROM expenses WHERE id = ?', [expenseId], (err, expense) => {
-            if (err) return res.status(500).json({ error: 'Database error' });
-            res.status(201).json(formatExpense(expense));
-          });
-        }
-      );
+    if (existingKey) {
+      const existingExpense = await getAsync('SELECT * FROM expenses WHERE id = ?', [existingKey.expense_id]);
+      await runAsync('COMMIT');
+      return res.status(201).json(formatExpense(existingExpense));
     }
-  );
+
+    await runAsync(
+      'INSERT INTO expenses (id, amount, category, description, date) VALUES (?, ?, ?, ?, ?)',
+      [expenseId, amountInCents, category, description, date]
+    );
+
+    await runAsync(
+      'INSERT INTO idempotency_keys (idempotency_key, expense_id) VALUES (?, ?)',
+      [idempotencyKey, expenseId]
+    );
+
+    const createdExpense = await getAsync('SELECT * FROM expenses WHERE id = ?', [expenseId]);
+    await runAsync('COMMIT');
+    return res.status(201).json(formatExpense(createdExpense));
+  } catch (error) {
+    try {
+      await runAsync('ROLLBACK');
+    } catch (rollbackError) {
+      console.error('Rollback failed:', rollbackError);
+    }
+    console.error('Expense creation failed:', error);
+    return res.status(500).json({ error: 'Failed to create expense' });
+  }
 });
 
 // GET /expenses - List expenses with filtering and sorting
-app.get('/expenses', (req, res) => {
+app.get('/expenses', async (req, res) => {
   const { category, sortDate } = req.query;
 
   let query = 'SELECT * FROM expenses WHERE 1=1';
@@ -160,14 +188,13 @@ app.get('/expenses', (req, res) => {
     query += ' ORDER BY date DESC';
   }
 
-  db.all(query, params, (err, rows) => {
-    if (err) {
-      return res.status(500).json({ error: 'Database error' });
-    }
-
+  try {
+    const rows = await allAsync(query, params);
     const expenses = rows.map(formatExpense);
     res.json(expenses);
-  });
+  } catch (error) {
+    res.status(500).json({ error: 'Database error' });
+  }
 });
 
 // GET /expenses/:id - Get a single expense
@@ -191,7 +218,7 @@ function formatExpense(expense) {
     category: expense.category,
     description: expense.description,
     date: expense.date,
-    created_at: expense.created_at,
+    createdAt: expense.created_at,
   };
 }
 
@@ -226,6 +253,15 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Internal server error' });
 });
 
-app.listen(PORT, () => {
-  console.log(`✅ Backend running on http://localhost:${PORT}`);
-});
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`✅ Backend running on http://localhost:${PORT}`);
+  });
+}
+
+module.exports = {
+  app,
+  db,
+  validateExpense,
+  isValidDate,
+};

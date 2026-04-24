@@ -28,6 +28,7 @@ function CategoryPill({ cat, selected, onClick }) {
   const meta = getCatMeta(cat);
   return (
     <button
+      type="button"
       className={`cat-pill ${selected ? 'cat-pill--active' : ''}`}
       style={{ '--c': meta.color }}
       onClick={() => onClick(cat)}
@@ -277,8 +278,25 @@ export default function App() {
 
             {/* Filters */}
             <div className="filters-row">
+              <div className="sort-control">
+                <label htmlFor="category-filter" className="form-label">Category</label>
+                <select
+                  id="category-filter"
+                  value={filterCategory}
+                  onChange={e => setFilterCategory(e.target.value)}
+                  className="sort-select"
+                >
+                  <option value="">All categories</option>
+                  {categories.map((categoryOption) => (
+                    <option key={categoryOption} value={categoryOption}>
+                      {categoryOption}
+                    </option>
+                  ))}
+                </select>
+              </div>
               <div className="cat-pills">
                 <button
+                  type="button"
                   className={`cat-pill ${!filterCategory ? 'cat-pill--active cat-pill--all' : ''}`}
                   onClick={() => setFilterCategory('')}
                 >All</button>
@@ -287,8 +305,9 @@ export default function App() {
                 ))}
               </div>
               <div className="sort-control">
+                <label htmlFor="date-sort" className="form-label">Sort by date</label>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 6h18M7 12h10M11 18h2"/></svg>
-                <select value={sortDate} onChange={e => setSortDate(e.target.value)} className="sort-select">
+                <select id="date-sort" value={sortDate} onChange={e => setSortDate(e.target.value)} className="sort-select">
                   <option value="desc">Newest first</option>
                   <option value="asc">Oldest first</option>
                 </select>
@@ -297,7 +316,10 @@ export default function App() {
 
             {/* List */}
             <div className="list-section">
-              {error && <div className="alert alert--error">{error}</div>}
+              <div className="stat-sub" style={{ marginBottom: '0.75rem' }}>
+                Total: ₹{total.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
+              </div>
+              {error && <div className="alert alert--error" role="alert" aria-live="assertive">{error}</div>}
               {loading ? (
                 <div className="loading-state">
                   {[1,2,3].map(i => <div key={i} className="skeleton-row" />)}
@@ -360,25 +382,26 @@ export default function App() {
       {/* Add Expense Modal */}
       {showForm && (
         <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowForm(false)}>
-          <div className="modal">
+          <div className="modal" role="dialog" aria-modal="true" aria-labelledby="add-expense-title">
             <div className="modal-header">
-              <h2 className="modal-title">Add expense</h2>
-              <button className="modal-close" onClick={() => setShowForm(false)}>
+              <h2 id="add-expense-title" className="modal-title">Add expense</h2>
+              <button type="button" className="modal-close" onClick={() => setShowForm(false)} aria-label="Close add expense dialog">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
               </button>
             </div>
 
-            {error && <div className="alert alert--error">{error}</div>}
-            {successMessage && <div className="alert alert--success">{successMessage}</div>}
+            {error && <div className="alert alert--error" role="alert" aria-live="assertive">{error}</div>}
+            {successMessage && <div className="alert alert--success" role="status" aria-live="polite">{successMessage}</div>}
 
             <form onSubmit={handleSubmit} className="expense-form">
               <div className="form-row">
                 <div className="form-group">
-                  <label className="form-label">Amount (₹)</label>
+                  <label htmlFor="expense-amount" className="form-label">Amount (₹)</label>
                   <div className="input-wrap input-wrap--prefix">
                     <span className="input-prefix">₹</span>
                     <input
                       type="number"
+                      id="expense-amount"
                       name="amount"
                       step="0.01"
                       min="0.01"
@@ -393,9 +416,10 @@ export default function App() {
                   </div>
                 </div>
                 <div className="form-group">
-                  <label className="form-label">Date</label>
+                  <label htmlFor="expense-date" className="form-label">Date</label>
                   <input
                     type="date"
+                    id="expense-date"
                     name="date"
                     value={formData.date}
                     onChange={handleInputChange}
@@ -407,7 +431,7 @@ export default function App() {
               </div>
 
               <div className="form-group">
-                <label className="form-label">Category</label>
+                <label className="form-label" id="expense-category-label">Category</label>
                 <div className="cat-select-grid">
                   {categories.map(cat => {
                     const meta = getCatMeta(cat);
@@ -419,6 +443,8 @@ export default function App() {
                         style={{ '--c': meta.color }}
                         onClick={() => setFormData(p => ({ ...p, category: cat }))}
                         disabled={submitting}
+                        aria-pressed={formData.category === cat}
+                        aria-describedby="expense-category-label"
                       >
                         <span className="cat-select-icon">{meta.icon}</span>
                         <span>{cat}</span>
@@ -429,9 +455,10 @@ export default function App() {
               </div>
 
               <div className="form-group">
-                <label className="form-label">Description</label>
+                <label htmlFor="expense-description" className="form-label">Description</label>
                 <input
                   type="text"
+                  id="expense-description"
                   name="description"
                   placeholder="What did you spend on?"
                   value={formData.description}
