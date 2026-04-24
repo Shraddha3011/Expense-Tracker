@@ -132,7 +132,9 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('list');
   const tempIdRef = useRef(null);
 
-  useEffect(() => { loadExpenses(); }, [filterCategory, sortDate]);
+useEffect(() => {
+  loadExpenses();
+}, [loadExpenses]);
   useEffect(() => {
     fetchCategories()
       .then(d => d?.length && setCategories(d))
