@@ -196,13 +196,6 @@ Implemented:
 - validation + loading/error states
 - meaningful backend and frontend tests
 
-Intentionally not implemented:
-- authentication/authorization
-- edit/delete flows
-- pagination
-- advanced analytics/reporting
-- production infra hardening (rate limiting, auth middleware, observability)
-
 ## If I Had More Time
 
 - migrate to PostgreSQL with migrations
@@ -210,6 +203,3 @@ Intentionally not implemented:
 - add edit/delete and richer category reporting
 - add CI pipeline with test and lint gates
 
----
-
-This submission focuses on production-minded behavior under unreliable conditions while keeping the feature scope intentionally small and maintainable.
